@@ -222,11 +222,11 @@ class FinancialAssistantService:
             "x-goog-api-key": clean_key
         }
 
-        # Try user's requested model first if text-capable, then standard candidates
+        # Try user's requested model first if text-capable, then standard active candidates
         models_to_try = []
         if model and "1.5-flash" not in model and FinancialAssistantService.is_text_generation_model(model):
             models_to_try.append(model)
-        for def_m in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b", "gemini-pro"]:
+        for def_m in ["gemini-flash-lite-latest", "gemini-3.8-flash", "gemma-4-26b-a4b-it", "gemini-flash-latest", "gemini-pro"]:
             if def_m not in models_to_try:
                 models_to_try.append(def_m)
 
@@ -244,12 +244,12 @@ class FinancialAssistantService:
                     text = FinancialAssistantService.extract_gemini_text(data)
                     if text:
                         return text
-                elif resp.status_code in [400, 404]:
+                elif resp.status_code in [400, 404, 429, 503]:
                     continue
                 else:
                     err_data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
                     msg = err_data.get("error", {}).get("message", resp.text)
-                    raise RuntimeError(f"Google Gemini Error ({resp.status_code}): {msg}")
+                    continue
 
             # If predefined candidates fail, query ListModels dynamically to get active text models for this key
             list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_key}"
@@ -403,7 +403,7 @@ class FinancialAssistantService:
                     candidates = []
                     if model and model in available:
                         candidates.append(model)
-                    for pref in ["2.5-flash", "2.0-flash", "1.5-flash-8b", "flash", "pro"]:
+                    for pref in ["flash-lite", "gemma", "3.8-flash", "3.7-flash", "flash", "pro"]:
                         for a in available:
                             if pref in a.lower() and a not in candidates:
                                 candidates.append(a)
