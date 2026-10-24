@@ -1,0 +1,72 @@
+# ==============================================================================
+# CashIQ Git Ignore Configuration
+# ==============================================================================
+
+# --- Environments & Secrets (CRITICAL: NEVER COMMIT REAL SECRETS) ---
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# --- Database Files (Local SQLite & Session Data) ---
+*.db
+*.sqlite
+*.sqlite3
+backend/cashiq.db
+backend/*.db
+
+# --- Frontend Build Artifacts & Dependencies ---
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.npm/
+.eslintcache
+
+# --- Python Bytecode & Cache ---
+__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+*.egg-info/
+
+# --- Python Virtual Environments ---
+venv/
+.venv/
+env/
+ENV/
+venv.bak/
+env.bak/
+
+# --- Logs & Temporary Files ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.coverage
+.pytest_cache/
+
+# --- OS & IDE Metadata ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo

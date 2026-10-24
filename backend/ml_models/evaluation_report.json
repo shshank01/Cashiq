@@ -1,0 +1,100 @@
+{
+  "model_version": "v1.2.0-kaggle-tfidf-logreg",
+  "dataset": "Indian Banking Transaction Text Dataset + SME Extensions",
+  "train_samples_count": 10550,
+  "test_samples_count": 1000,
+  "accuracy": 1.0,
+  "weighted_precision": 1.0,
+  "weighted_recall": 1.0,
+  "weighted_f1": 1.0,
+  "macro_f1": 1.0,
+  "confusion_matrix": [
+    [
+      209,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      171,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      218,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      186,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      216
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "Investment & Capital",
+    "Loans & Financing",
+    "Meals & Entertainment",
+    "Office Supplies & Equipment",
+    "Travel & Transportation"
+  ],
+  "per_class_report": {
+    "Investment & Capital": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 209.0
+    },
+    "Loans & Financing": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 171.0
+    },
+    "Meals & Entertainment": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 218.0
+    },
+    "Office Supplies & Equipment": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 186.0
+    },
+    "Travel & Transportation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 216.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 1000.0
+    }
+  }
+}
