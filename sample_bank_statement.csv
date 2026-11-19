@@ -1,0 +1,42 @@
+Date,Description,Merchant,Amount,Type
+2026-07-01,Stripe Payout Client Retainer A,Stripe,18500.00,credit
+2026-07-01,WeWork Dedicated Office Space Monthly,WeWork,3200.00,debit
+2026-07-01,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-07-02,AWS EMEA Cloud Hosting Infrastructure,AWS EMEA,840.00,debit
+2026-07-03,Slack Technologies Business Seats,Slack Technologies,450.00,debit
+2026-07-04,Google Ads Marketing Campaign,Google Ads,1200.00,debit
+2026-07-05,Starbucks Client Coffee Meeting,Starbucks,34.50,debit
+2026-07-07,Uber Ride to Client HQ,Uber,45.20,debit
+2026-07-10,Staples Printer Paper and Office Hardware,Staples,280.00,debit
+2026-07-15,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-07-15,Acme Corp Enterprise License Revenue,Acme Corp,22000.00,credit
+2026-07-20,GitHub Enterprise Cloud Seats,GitHub,210.00,debit
+2026-07-22,Deloitte Tax Advisory and Compliance Retainer,Deloitte,3500.00,debit
+2026-07-25,DoorDash Team Workshop Lunch,DoorDash,145.00,debit
+2026-08-01,Stripe Payout Client Retainer A,Stripe,18500.00,credit
+2026-08-01,WeWork Dedicated Office Space Monthly,WeWork,3200.00,debit
+2026-08-01,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-08-02,AWS EMEA Cloud Hosting Infrastructure,AWS EMEA,890.00,debit
+2026-08-03,Slack Technologies Business Seats,Slack Technologies,450.00,debit
+2026-08-04,Google Ads Marketing Campaign,Google Ads,1350.00,debit
+2026-08-08,Delta Air Lines Conference Travel Flight,Delta Air Lines,850.00,debit
+2026-08-15,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-08-16,Apex Global Invoiced Payment Received,Apex Global,25000.00,credit
+2026-08-20,OpenAI API Enterprise Token Usage,OpenAI,620.00,debit
+2026-08-25,Zoom Video Communications Monthly,Zoom,180.00,debit
+2026-09-01,Stripe Payout Client Retainer A,Stripe,18500.00,credit
+2026-09-01,WeWork Dedicated Office Space Monthly,WeWork,3200.00,debit
+2026-09-01,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-09-02,AWS EMEA Cloud Surge Outlier Spike,AWS EMEA,14800.00,debit
+2026-09-03,Slack Technologies Business Seats,Slack Technologies,450.00,debit
+2026-09-05,Unplanned Datacenter Hardware Replacement,Emergency Hardware,42500.00,debit
+2026-09-10,Meta Ads Manager Acquisition Campaign,Meta Ads,1600.00,debit
+2026-09-15,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-09-18,Stripe Payout Milestone B Payout,Stripe,31000.00,credit
+2026-09-22,Figma Design Organization Plan,Figma,360.00,debit
+2026-09-28,Uber Business Travel to Airport,Uber,62.00,debit
+2026-10-01,Stripe Payout Client Retainer A,Stripe,18500.00,credit
+2026-10-01,WeWork Dedicated Office Space Monthly,WeWork,3200.00,debit
+2026-10-01,Gusto Employee Salaries Bi-weekly,Gusto,14500.00,debit
+2026-10-02,AWS EMEA Cloud Hosting Infrastructure,AWS EMEA,910.00,debit
+2026-10-03,Slack Technologies Business Seats,Slack Technologies,450.00,debit

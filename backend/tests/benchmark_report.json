@@ -1,0 +1,346 @@
+{
+  "legacy_v2": {
+    "field_accuracy_pct": {
+      "merchant": 83.3,
+      "date": 66.7,
+      "amount": 33.3,
+      "currency": 50.0,
+      "tax": 0.0,
+      "direction": 100.0
+    },
+    "field_counts": {
+      "merchant": "5/6",
+      "date": "4/6",
+      "amount": "2/6",
+      "currency": "3/6",
+      "tax": "0/5",
+      "direction": "6/6"
+    },
+    "row_extraction_accuracy_pct": 16.7,
+    "row_counts": "3/18",
+    "total_processing_ms": 2154.4,
+    "avg_processing_ms": 179.5,
+    "cached_lookup_ms": null,
+    "failure_rate_pct": 8.3,
+    "details": [
+      {
+        "doc": "sample_receipt.png",
+        "ms": 278.3,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": false
+        },
+        "got_amount": 25009,
+        "exp_amount": 25009,
+        "got_tax": null,
+        "exp_tax": 1959,
+        "got_currency": "USD",
+        "got_date": "2026-10-12"
+      },
+      {
+        "doc": "sample_vendor_bill.pdf",
+        "ms": 26.0,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true
+        },
+        "got_amount": 85000,
+        "exp_amount": 85000,
+        "got_tax": null,
+        "exp_tax": null,
+        "got_currency": "USD",
+        "got_date": "2026-10-11"
+      },
+      {
+        "doc": "clear_indian_gst_receipt.png",
+        "ms": 220.8,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": false,
+          "currency": false,
+          "direction": true,
+          "tax": false
+        },
+        "got_amount": 0,
+        "exp_amount": 12345000,
+        "got_tax": null,
+        "exp_tax": 1890000,
+        "got_currency": "USD",
+        "got_date": "2026-10-15"
+      },
+      {
+        "doc": "blurry_receipt.jpg",
+        "ms": 174.1,
+        "checks": {
+          "merchant": true,
+          "date": false,
+          "amount": false,
+          "currency": false,
+          "direction": true,
+          "tax": false
+        },
+        "got_amount": 0,
+        "exp_amount": 1770000,
+        "got_tax": null,
+        "exp_tax": 270000,
+        "got_currency": "USD",
+        "got_date": "2026-11-18"
+      },
+      {
+        "doc": "rotated_90_receipt.png",
+        "ms": 170.0,
+        "checks": {
+          "merchant": false,
+          "date": false,
+          "amount": false,
+          "currency": false,
+          "direction": true,
+          "tax": false
+        },
+        "got_amount": 0,
+        "exp_amount": 708000,
+        "got_tax": null,
+        "exp_tax": 108000,
+        "got_currency": "USD",
+        "got_date": "2026-11-18"
+      },
+      {
+        "doc": "low_light_receipt.jpg",
+        "ms": 130.1,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": false,
+          "currency": true,
+          "direction": true,
+          "tax": false
+        },
+        "got_amount": 0,
+        "exp_amount": 6480,
+        "got_tax": null,
+        "exp_tax": 480,
+        "got_currency": "USD",
+        "got_date": "2026-10-05"
+      },
+      {
+        "doc": "scanned_indian_invoice.pdf",
+        "status": "empty"
+      },
+      {
+        "doc": "sample_bank_statement.pdf",
+        "ms": 10.6,
+        "rows_extracted": 5
+      },
+      {
+        "doc": "digital_indian_bank_statement.pdf",
+        "ms": 4.1,
+        "rows_matched": "0/4",
+        "extra_rows": 0
+      },
+      {
+        "doc": "mixed_digital_and_scanned.pdf",
+        "ms": 566.7,
+        "rows_matched": "0/5"
+      },
+      {
+        "doc": "indian_hdfc_statement.csv",
+        "ms": 2.0,
+        "rows_matched": "0/4",
+        "extra_rows": 0
+      },
+      {
+        "doc": "malformed_semicolon.csv",
+        "ms": 9.5,
+        "rows_matched": "0/2",
+        "footer_leaked": true
+      }
+    ]
+  },
+  "upgraded_v3": {
+    "field_accuracy_pct": {
+      "merchant": 100.0,
+      "date": 100.0,
+      "amount": 100.0,
+      "currency": 100.0,
+      "tax": 100.0,
+      "direction": 100.0
+    },
+    "field_counts": {
+      "merchant": "7/7",
+      "date": "7/7",
+      "amount": "7/7",
+      "currency": "7/7",
+      "tax": "6/6",
+      "direction": "7/7"
+    },
+    "row_extraction_accuracy_pct": 100.0,
+    "row_counts": "18/18",
+    "total_processing_ms": 60775.1,
+    "avg_processing_ms": 5064.6,
+    "cached_lookup_ms": 0.383,
+    "failure_rate_pct": 0.0,
+    "details": [
+      {
+        "doc": "sample_receipt.png",
+        "ms": 6187.1,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": true
+        },
+        "got_amount": 25009,
+        "exp_amount": 25009,
+        "got_tax": 1959,
+        "exp_tax": 1959,
+        "got_currency": "USD",
+        "got_date": "2026-10-12"
+      },
+      {
+        "doc": "sample_vendor_bill.pdf",
+        "ms": 2324.2,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true
+        },
+        "got_amount": 85000,
+        "exp_amount": 85000,
+        "got_tax": null,
+        "exp_tax": null,
+        "got_currency": "USD",
+        "got_date": "2026-10-11"
+      },
+      {
+        "doc": "clear_indian_gst_receipt.png",
+        "ms": 3806.2,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": true
+        },
+        "got_amount": 12345000,
+        "exp_amount": 12345000,
+        "got_tax": 1890000,
+        "exp_tax": 1890000,
+        "got_currency": "INR",
+        "got_date": "2026-10-15"
+      },
+      {
+        "doc": "blurry_receipt.jpg",
+        "ms": 7145.5,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": true
+        },
+        "got_amount": 1770000,
+        "exp_amount": 1770000,
+        "got_tax": 270000,
+        "exp_tax": 270000,
+        "got_currency": "INR",
+        "got_date": "2026-09-20"
+      },
+      {
+        "doc": "rotated_90_receipt.png",
+        "ms": 10032.3,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": true
+        },
+        "got_amount": 708000,
+        "exp_amount": 708000,
+        "got_tax": 108000,
+        "exp_tax": 108000,
+        "got_currency": "INR",
+        "got_date": "2026-10-08"
+      },
+      {
+        "doc": "low_light_receipt.jpg",
+        "ms": 7337.0,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": true
+        },
+        "got_amount": 6480,
+        "exp_amount": 6480,
+        "got_tax": 480,
+        "exp_tax": 480,
+        "got_currency": "USD",
+        "got_date": "2026-10-05"
+      },
+      {
+        "doc": "scanned_indian_invoice.pdf",
+        "ms": 10837.2,
+        "checks": {
+          "merchant": true,
+          "date": true,
+          "amount": true,
+          "currency": true,
+          "direction": true,
+          "tax": true
+        },
+        "got_amount": 12345000,
+        "exp_amount": 12345000,
+        "got_tax": 1890000,
+        "exp_tax": 1890000,
+        "got_currency": "INR",
+        "got_date": "2026-10-15"
+      },
+      {
+        "doc": "sample_bank_statement.pdf",
+        "ms": 705.0,
+        "rows_extracted": 5
+      },
+      {
+        "doc": "digital_indian_bank_statement.pdf",
+        "ms": 1255.0,
+        "rows_matched": "4/4",
+        "extra_rows": 0
+      },
+      {
+        "doc": "mixed_digital_and_scanned.pdf",
+        "ms": 11111.6,
+        "rows_matched": "5/5"
+      },
+      {
+        "doc": "indian_hdfc_statement.csv",
+        "ms": 15.6,
+        "rows_matched": "4/4",
+        "extra_rows": 0
+      },
+      {
+        "doc": "malformed_semicolon.csv",
+        "ms": 18.3,
+        "rows_matched": "2/2",
+        "footer_leaked": false
+      }
+    ]
+  }
+}
