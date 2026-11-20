@@ -2,10 +2,11 @@ import os
 import json
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user, get_current_workspace_user
+from app.auth.dependencies import get_current_user, get_current_workspace_user, require_workspace_role
 from app.models.user import User
 
 from app.services.workspace_service import WorkspaceService
@@ -20,6 +21,11 @@ from app.services.report_service import ReportService
 from app.services.assistant_service import FinancialAssistantService
 from app.services.document_service import DocumentService
 from app.services.fx_service import FxService
+from app.services.simulation_service import SimulationService
+from app.services.budget_service import BudgetService
+from app.services.reconciliation_service import ReconciliationService
+from app.services.health_score_service import HealthScoreService
+from app.services.audit_service import AuditService
 from app.config import settings, save_env_variables
 from app.ml.architecture import ml_orchestrator, model_serving, ground_truth_collector
 from app.ml.business_taxonomy import list_supported_industries, ALL_EXPENSE_CATEGORIES
@@ -331,6 +337,46 @@ async def report_cash_flow(
 ):
     return await ReportService.get_cash_flow_statement(db, workspace_id, start_date, end_date)
 
+@api_router.get("/workspaces/{workspace_id}/reports/summary")
+async def report_comprehensive_summary(
+    workspace_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await ReportService.get_comprehensive_financial_data(db, workspace_id, start_date, end_date)
+
+@api_router.get("/workspaces/{workspace_id}/reports/export/excel")
+async def export_excel_report(
+    workspace_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    excel_bytes = await ReportService.export_excel_report(db, workspace_id, start_date, end_date)
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="CashIQ_Report_{workspace_id[:8]}.xlsx"'}
+    )
+
+@api_router.get("/workspaces/{workspace_id}/reports/export/pdf")
+async def export_pdf_report(
+    workspace_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    pdf_bytes = await ReportService.export_pdf_report(db, workspace_id, start_date, end_date)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="CashIQ_Report_{workspace_id[:8]}.pdf"'}
+    )
+
 # ----------------- AI Assistant -----------------
 @api_router.post("/workspaces/{workspace_id}/assistant/chat")
 async def assistant_chat(
@@ -494,4 +540,363 @@ async def convert_currency(payload: Dict[str, Any]):
     to_curr = payload.get("to_currency", "INR")
     custom_rate = float(payload.get("custom_rate")) if payload.get("custom_rate") else None
     return FxService.convert(amount, from_curr, to_curr, custom_rate)
+
+# ----------------- What-If Financial Simulator -----------------
+@api_router.post("/workspaces/{workspace_id}/simulation/run")
+async def run_financial_simulation(
+    workspace_id: str,
+    payload: Dict[str, Any],
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    rev_pct = float(payload.get("revenue_change_pct", 0.0))
+    exp_pct = float(payload.get("expense_change_pct", 0.0))
+    delay_days = int(payload.get("delayed_receivables_days", 0))
+    months = int(payload.get("months", 6))
+    custom_events = payload.get("custom_events", [])
+    return await SimulationService.run_simulation(
+        db,
+        workspace_id=workspace_id,
+        revenue_change_pct=rev_pct,
+        expense_change_pct=exp_pct,
+        delayed_receivables_days=delay_days,
+        months=months,
+        custom_events=custom_events
+    )
+
+@api_router.get("/workspaces/{workspace_id}/simulation/scenarios")
+async def list_simulation_scenarios(
+    workspace_id: str,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    scenarios = await SimulationService.list_scenarios(db, workspace_id)
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "description": s.description,
+            "parameters": s.parameters,
+            "results": s.results,
+            "created_at": s.created_at.isoformat(),
+        }
+        for s in scenarios
+    ]
+
+@api_router.post("/workspaces/{workspace_id}/simulation/scenarios")
+async def save_simulation_scenario(
+    workspace_id: str,
+    payload: Dict[str, Any],
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin", "accountant"])),
+    db: AsyncSession = Depends(get_db)
+):
+    name = payload.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Scenario name is required")
+    description = payload.get("description")
+    parameters = payload.get("parameters", {})
+    results = payload.get("results", {})
+    scenario = await SimulationService.save_scenario(
+        db,
+        workspace_id=workspace_id,
+        name=name,
+        description=description,
+        parameters=parameters,
+        results=results,
+        user_id=workspace_context["user"].id
+    )
+    return {
+        "id": scenario.id,
+        "name": scenario.name,
+        "description": scenario.description,
+        "parameters": scenario.parameters,
+        "results": scenario.results,
+        "created_at": scenario.created_at.isoformat(),
+    }
+
+@api_router.delete("/workspaces/{workspace_id}/simulation/scenarios/{scenario_id}")
+async def delete_simulation_scenario(
+    workspace_id: str,
+    scenario_id: str,
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    success = await SimulationService.delete_scenario(db, workspace_id, scenario_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+    return {"message": "Scenario deleted successfully"}
+
+# ----------------- Budget Management -----------------
+@api_router.get("/workspaces/{workspace_id}/budgets")
+async def list_workspace_budgets(
+    workspace_id: str,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await BudgetService.list_budgets(db, workspace_id)
+
+@api_router.post("/workspaces/{workspace_id}/budgets")
+async def create_or_update_workspace_budget(
+    workspace_id: str,
+    payload: Dict[str, Any],
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin", "accountant"])),
+    db: AsyncSession = Depends(get_db)
+):
+    month = payload.get("month")
+    if not month:
+        raise HTTPException(status_code=400, detail="Month is required in YYYY-MM format")
+    name = payload.get("name")
+    category_limits = payload.get("category_limits", [])
+    total_limit = payload.get("total_limit_minor")
+    currency = payload.get("currency", "USD")
+    return await BudgetService.create_or_update_budget(
+        db,
+        workspace_id=workspace_id,
+        month=month,
+        name=name,
+        category_limits=category_limits,
+        total_limit_minor=total_limit,
+        currency=currency,
+        user_id=workspace_context["user"].id
+    )
+
+@api_router.get("/workspaces/{workspace_id}/budgets/performance")
+async def get_workspace_budget_performance(
+    workspace_id: str,
+    month: Optional[str] = None,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await BudgetService.get_budget_performance(db, workspace_id, month)
+
+@api_router.delete("/workspaces/{workspace_id}/budgets/{budget_id}")
+async def delete_workspace_budget(
+    workspace_id: str,
+    budget_id: str,
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    success = await BudgetService.delete_budget(db, workspace_id, budget_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    return {"message": "Budget deleted successfully"}
+
+# ----------------- Bank Statement Reconciliation -----------------
+@api_router.post("/workspaces/{workspace_id}/reconciliation/upload")
+async def upload_bank_statement_reconciliation(
+    workspace_id: str,
+    file: UploadFile = File(...),
+    account_id: Optional[str] = None,
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin", "accountant"])),
+    db: AsyncSession = Depends(get_db)
+):
+    if not file.filename.lower().endswith((".csv", ".txt")):
+        raise HTTPException(status_code=400, detail="Only CSV bank statements are supported for reconciliation.")
+    
+    content_bytes = await file.read()
+    try:
+        content_str = content_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        content_str = content_bytes.decode("latin-1")
+
+    try:
+        result = await ReconciliationService.process_reconciliation(
+            db,
+            workspace_id=workspace_id,
+            filename=file.filename,
+            file_content=content_str,
+            account_id=account_id,
+            user_id=workspace_context["user"].id
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.get("/workspaces/{workspace_id}/reconciliation/sessions")
+async def list_reconciliation_sessions(
+    workspace_id: str,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await ReconciliationService.list_sessions(db, workspace_id)
+
+@api_router.get("/workspaces/{workspace_id}/reconciliation/sessions/{session_id}")
+async def get_reconciliation_session(
+    workspace_id: str,
+    session_id: str,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    sess = await ReconciliationService.get_session(db, workspace_id, session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail="Reconciliation session not found")
+    return sess
+
+@api_router.post("/workspaces/{workspace_id}/reconciliation/sessions/{session_id}/approve")
+async def approve_reconciliation_match(
+    workspace_id: str,
+    session_id: str,
+    payload: Dict[str, Any],
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin", "accountant"])),
+    db: AsyncSession = Depends(get_db)
+):
+    item_id = payload.get("item_id")
+    if not item_id:
+        raise HTTPException(status_code=400, detail="item_id is required")
+    success = await ReconciliationService.approve_match(db, workspace_id, session_id, item_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Reconciliation item not found")
+    return {"message": "Match approved"}
+
+@api_router.post("/workspaces/{workspace_id}/reconciliation/sessions/{session_id}/import-unmatched")
+async def import_unmatched_reconciliation(
+    workspace_id: str,
+    session_id: str,
+    payload: Dict[str, Any],
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin", "accountant"])),
+    db: AsyncSession = Depends(get_db)
+):
+    item_ids = payload.get("item_ids", [])
+    if not item_ids:
+        raise HTTPException(status_code=400, detail="item_ids array is required")
+    imported = await ReconciliationService.import_unmatched_to_ledger(
+        db,
+        workspace_id=workspace_id,
+        session_id=session_id,
+        item_ids=item_ids,
+        user_id=workspace_context["user"].id
+    )
+    return {"imported_count": imported, "message": f"Successfully imported {imported} transactions to ledger."}
+
+@api_router.get("/workspaces/{workspace_id}/reconciliation/sessions/{session_id}/export-report")
+async def export_reconciliation_report(
+    workspace_id: str,
+    session_id: str,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    sess = await ReconciliationService.get_session(db, workspace_id, session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    import csv, io
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Date", "Description", "Statement Amount", "Match Type", "Status", "Discrepancy Details", "CashIQ Transaction ID"])
+    for it in sess["items"]:
+        amt = f"${(it['amount_minor']/100):,.2f}"
+        discr = (it.get("discrepancy_details") or {}).get("reason", "")
+        writer.writerow([
+            it["date"],
+            it["description"],
+            amt,
+            it["match_type"],
+            it["status"],
+            discr,
+            it.get("transaction_id") or ""
+        ])
+
+    csv_bytes = out.getvalue().encode("utf-8")
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="reconciliation_report_{session_id[:8]}.csv"'}
+    )
+
+# ----------------- Financial Health Score -----------------
+@api_router.get("/workspaces/{workspace_id}/health-score")
+async def get_financial_health_score(
+    workspace_id: str,
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await HealthScoreService.calculate_health_score(db, workspace_id, persist=True)
+
+# ----------------- Audit Logs -----------------
+@api_router.get("/workspaces/{workspace_id}/audit-logs")
+async def get_workspace_audit_logs(
+    workspace_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    workspace_context: dict = Depends(require_workspace_role(["owner", "admin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    return await AuditService.list_events(db, workspace_id, limit=limit)
+
+# ----------------- Anomalies Management -----------------
+@api_router.get("/workspaces/{workspace_id}/anomalies")
+async def list_workspace_anomalies(
+    workspace_id: str,
+    severity: Optional[str] = Query(None, description="all, high, medium, low"),
+    feedback_status: Optional[str] = Query(None, description="pending, legitimate, genuine_anomaly"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
+    workspace_context: dict = Depends(get_current_workspace_user),
+    db: AsyncSession = Depends(get_db)
+):
+    from sqlalchemy import and_, select, func
+    from app.models.transaction import Transaction
+
+    query = select(Transaction).where(
+        Transaction.workspace_id == workspace_id,
+        Transaction.is_anomaly == True
+    )
+
+    if severity and severity.lower() != "all":
+        sev = severity.lower()
+        if sev == "high":
+            query = query.where(Transaction.anomaly_severity.in_(["critical", "high"]))
+        elif sev == "medium":
+            query = query.where(Transaction.anomaly_severity == "medium")
+        elif sev == "low":
+            query = query.where(Transaction.anomaly_severity == "low")
+
+    if feedback_status:
+        if feedback_status == "pending":
+            query = query.where(Transaction.anomaly_feedback_status.is_(None))
+        else:
+            query = query.where(Transaction.anomaly_feedback_status == feedback_status)
+
+    # Count total
+    count_q = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+
+    # Paginate
+    query = query.order_by(Transaction.date.desc()).offset((page - 1) * per_page).limit(per_page)
+    res = await db.execute(query)
+    txs = res.scalars().all()
+
+    import json
+    items = []
+    for t in txs:
+        parsed_expl = None
+        if t.anomaly_explanation:
+            try:
+                parsed_expl = json.loads(t.anomaly_explanation)
+            except Exception:
+                parsed_expl = None
+
+        items.append({
+            "id": t.id,
+            "date": t.date.strftime("%Y-%m-%d"),
+            "description": t.description,
+            "merchant": t.merchant,
+            "amount_minor": t.amount_minor,
+            "currency": t.currency,
+            "category_name": t.category_name,
+            "type": t.type,
+            "anomaly_score": t.anomaly_score,
+            "anomaly_severity": "high" if t.anomaly_severity in ["critical", "high"] else (t.anomaly_severity or "medium"),
+            "anomaly_reason": t.anomaly_reason,
+            "anomaly_feedback_status": t.anomaly_feedback_status,
+            "anomaly_explanation_details": parsed_expl,
+        })
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": max(1, (total + per_page - 1) // per_page)
+    }
+
 

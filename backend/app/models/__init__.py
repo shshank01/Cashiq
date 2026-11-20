@@ -13,6 +13,11 @@ from app.models.document import Document
 from app.models.audit import Audit
 from app.models.business_profile import BusinessProfile
 from app.models.ml_ground_truth import MLGroundTruth, BehavioralProfileModel, MLModelRegistryEntry
+from app.models.budget import Budget, CategoryBudget
+from app.models.simulation import SimulationScenario
+from app.models.reconciliation import ReconciliationSession, ReconciliationItem
+from app.models.health_score import HealthScoreRecord
+from app.models.refresh_token import RefreshToken
 
 __all__ = [
     "User", "Workspace", "WorkspaceMembership",
@@ -21,4 +26,9 @@ __all__ = [
     "Forecast", "Insight", "Document",
     "Audit", "BusinessProfile",
     "MLGroundTruth", "BehavioralProfileModel", "MLModelRegistryEntry",
+    "Budget", "CategoryBudget",
+    "SimulationScenario",
+    "ReconciliationSession", "ReconciliationItem",
+    "HealthScoreRecord",
+    "RefreshToken",
 ]

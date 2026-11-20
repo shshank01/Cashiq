@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
 import TransactionsPage from './pages/TransactionsPage';
+import SimulatorPage from './pages/SimulatorPage';
+import BudgetsPage from './pages/BudgetsPage';
+import ReconciliationPage from './pages/ReconciliationPage';
 import ForecastPage from './pages/ForecastPage';
 import InsightsPage from './pages/InsightsPage';
 import PayablesPage from './pages/PayablesPage';
@@ -46,6 +49,9 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
+            <Route path="simulator" element={<SimulatorPage />} />
+            <Route path="budgets" element={<BudgetsPage />} />
+            <Route path="reconciliation" element={<ReconciliationPage />} />
             <Route path="forecast" element={<ForecastPage />} />
             <Route path="insights" element={<InsightsPage />} />
             <Route path="payables" element={<PayablesPage />} />

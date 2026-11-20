@@ -100,6 +100,7 @@ export const TransactionsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [anomalySeverityFilter, setAnomalySeverityFilter] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [page, setPage] = useState(1);
@@ -564,7 +565,7 @@ export const TransactionsPage: React.FC = () => {
 
       {/* Filters Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search Input */}
           <div className="relative">
             <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3 pointer-events-none" />
@@ -598,6 +599,19 @@ export const TransactionsPage: React.FC = () => {
             ]}
           />
 
+          {/* Anomaly Severity Filter */}
+          <Select
+            value={anomalySeverityFilter}
+            onChange={(e) => { setAnomalySeverityFilter(e.target.value); setPage(1); }}
+            options={[
+              { value: '', label: 'All Severity & Normal' },
+              { value: 'anomalies', label: 'All Flagged Anomalies' },
+              { value: 'high', label: 'High / Critical Severity' },
+              { value: 'medium', label: 'Medium Severity' },
+              { value: 'low', label: 'Low Severity' },
+            ]}
+          />
+
           {/* Sort By */}
           <Select
             value={`${sortBy}:${sortOrder}`}
@@ -624,7 +638,16 @@ export const TransactionsPage: React.FC = () => {
         <LoadingSpinner />
       ) : (
         <Card>
-          <Table columns={columns} data={transactions} />
+          <Table
+            columns={columns}
+            data={transactions.filter((tx) => {
+              if (anomalySeverityFilter === 'anomalies') return tx.is_anomaly;
+              if (anomalySeverityFilter === 'high') return tx.is_anomaly && (tx.anomaly_severity === 'critical' || tx.anomaly_severity === 'high');
+              if (anomalySeverityFilter === 'medium') return tx.is_anomaly && tx.anomaly_severity === 'medium';
+              if (anomalySeverityFilter === 'low') return tx.is_anomaly && tx.anomaly_severity === 'low';
+              return true;
+            })}
+          />
           {totalPages > 1 && (
             <div className="p-4 border-t border-stone-100">
               <Pagination

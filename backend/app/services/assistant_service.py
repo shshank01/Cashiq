@@ -150,12 +150,111 @@ class FinancialAssistantService:
             }
 
         # 5. getInsights
-        if any(w in q for w in ["insight", "unusual", "alert", "anomaly", "recommendation"]):
+        if any(w in q for w in ["insight", "alert", "recommendation"]):
             tools_executed.append("getInsights()")
             insights = await InsightService.get_all(db, workspace_id)
             data_context["active_insights"] = [
                 {"title": i["title"], "description": i["description"], "severity": i["severity"]}
                 for i in insights[:4]
+            ]
+
+        # 6. getBudgetPerformance
+        if any(w in q for w in ["budget", "spending limit", "over budget", "allowance", "category limit"]):
+            from app.services.budget_service import BudgetService
+            tools_executed.append("getBudgetPerformance()")
+            b_perf = await BudgetService.get_budget_performance(db, workspace_id)
+            data_context["budget_performance"] = {
+                "month": b_perf["month"],
+                "total_budget": f"${b_perf['total_budget_limit_minor']/100:,.2f}",
+                "total_spent": f"${b_perf['total_spent_minor']/100:,.2f}",
+                "spent_pct": f"{b_perf['spent_pct']}%",
+                "status": b_perf["status"],
+                "overbudget_categories_count": b_perf["overbudget_categories_count"],
+                "top_categories": [
+                    {
+                        "category": cp["category"],
+                        "limit": f"${cp['limit_minor']/100:,.2f}",
+                        "spent": f"${cp['spent_minor']/100:,.2f}",
+                        "spent_pct": f"{cp['spent_pct']}%",
+                        "status": cp["status"]
+                    }
+                    for cp in b_perf["category_performances"][:5]
+                ],
+                "alerts": [a["message"] for a in b_perf["alerts"][:4]]
+            }
+
+        # 7. getHealthScore
+        if any(w in q for w in ["health", "score", "grade", "stability", "rating", "how healthy", "financial health"]):
+            from app.services.health_score_service import HealthScoreService
+            tools_executed.append("getHealthScore()")
+            hs = await HealthScoreService.calculate_health_score(db, workspace_id, persist=False)
+            data_context["health_score"] = {
+                "overall_score": f"{hs['overall_score']}/100",
+                "grade": hs["grade"],
+                "status": hs["status_description"],
+                "runway_months": hs["runway_months"],
+                "factors": [
+                    {"name": f["name"], "score": f["score"], "metric": f["metric_label"], "detail": f["detail"]}
+                    for f in hs["factors"]
+                ],
+                "suggestions": hs["suggestions"][:3]
+            }
+
+        # 8. getUnusualTransactions
+        if any(w in q for w in ["unusual", "anomaly", "anomalies", "flagged", "suspicious", "irregular", "spike", "why was this flagged"]):
+            tools_executed.append("getUnusualTransactions()")
+            anom_res = await db.execute(
+                select(Transaction).where(
+                    Transaction.workspace_id == workspace_id,
+                    Transaction.is_anomaly == True
+                ).order_by(desc(Transaction.date)).limit(5)
+            )
+            anoms = anom_res.scalars().all()
+            data_context["unusual_transactions"] = [
+                {
+                    "date": a.date.strftime("%Y-%m-%d"),
+                    "merchant": a.merchant or a.description,
+                    "amount": f"${a.amount_minor/100:,.2f}",
+                    "category": a.category_name,
+                    "severity": a.anomaly_severity,
+                    "reason": a.anomaly_reason,
+                }
+                for a in anoms
+            ]
+
+        # 9. getSimulationResults
+        if any(w in q for w in ["what if", "simulate", "simulation", "scenario", "stress test", "drop in revenue", "revenue reduction"]):
+            from app.services.simulation_service import SimulationService
+            tools_executed.append("getSimulationResults()")
+            sim = await SimulationService.run_simulation(db, workspace_id, revenue_change_pct=-15.0, expense_change_pct=10.0, months=6)
+            data_context["simulation_preview"] = {
+                "horizon": "6 months",
+                "baseline_runway": f"{sim['scenarios']['baseline']['runway_months']} months",
+                "expected_case_runway": f"{sim['scenarios']['expected_case']['runway_months']} months",
+                "worst_case_runway": f"{sim['scenarios']['worst_case']['runway_months']} months",
+                "baseline_ending_cash": f"${sim['scenarios']['baseline']['ending_cash_minor']/100:,.2f}",
+                "expected_ending_cash": f"${sim['scenarios']['expected_case']['ending_cash_minor']/100:,.2f}",
+                "worst_case_ending_cash": f"${sim['scenarios']['worst_case']['ending_cash_minor']/100:,.2f}",
+            }
+
+        # 10. getExpenseOptimizationOpportunities
+        if any(w in q for w in ["optimize", "optimization", "save", "cut", "reduce", "trim", "reduction", "saving"]):
+            tools_executed.append("getExpenseOptimizationOpportunities()")
+            txs_res = await db.execute(
+                select(Transaction).where(
+                    Transaction.workspace_id == workspace_id,
+                    Transaction.type == "expense",
+                    Transaction.date >= now - timedelta(days=60)
+                )
+            )
+            all_exp = txs_res.scalars().all()
+            cat_totals: Dict[str, int] = {}
+            for t in all_exp:
+                c = t.category_name or "Miscellaneous"
+                cat_totals[c] = cat_totals.get(c, 0) + abs(t.amount_minor)
+            top_cats = sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:4]
+            data_context["expense_optimization"] = [
+                {"category": c, "total_spent": f"${amt/100:,.2f}"} for c, amt in top_cats
             ]
 
         # Default fallback to dashboard summary if nothing matched
@@ -557,6 +656,82 @@ class FinancialAssistantService:
                     text_parts.append(f"• **{r['client']}**: {r['amount']} (Expected Due: {r['due_date']}, Status: {r['status']})")
             else:
                 text_parts.append("No active uncollected client invoices are currently logged.")
+
+        elif "budget" in q or "spending limit" in q or "over budget" in q:
+            b_perf = data_ctx.get("budget_performance", {})
+            if b_perf:
+                text_parts.append(f"**Budget Performance Report ({b_perf.get('month')}):**\n")
+                text_parts.append(f"• **Overall Status:** {b_perf.get('status', 'safe').replace('_', ' ').upper()}")
+                text_parts.append(f"• **Total Budget Limit:** {b_perf.get('total_budget')}")
+                text_parts.append(f"• **Actual Spent to Date:** {b_perf.get('total_spent')} ({b_perf.get('spent_pct')})")
+                text_parts.append(f"• **Overbudget Categories:** {b_perf.get('overbudget_categories_count', 0)}\n")
+                if b_perf.get("top_categories"):
+                    text_parts.append("**Category Limits Breakdown:**")
+                    for cat in b_perf["top_categories"]:
+                        text_parts.append(f"• **{cat['category']}**: {cat['spent']} spent / {cat['limit']} budget ({cat['spent_pct']}) - *{cat['status'].replace('_', ' ')}*")
+                if b_perf.get("alerts"):
+                    text_parts.append("\n**Active Budget Alerts:**")
+                    for a in b_perf["alerts"]:
+                        text_parts.append(f"⚠️ {a}")
+            else:
+                text_parts.append("No active budget limits have been set for this cycle. You can establish category limits on the **Budgets** page.")
+
+        elif "health" in q or "score" in q or "stability" in q or "how healthy" in q:
+            hs = data_ctx.get("health_score", {})
+            if hs:
+                text_parts.append(f"**Financial Health Score & Assessment:**\n")
+                text_parts.append(f"• **Composite Score:** **{hs.get('overall_score')}** (Grade: **{hs.get('grade')}**)")
+                text_parts.append(f"• **Operational Runway:** {hs.get('runway_months')} months")
+                text_parts.append(f"• **Diagnostic Status:** {hs.get('status')}\n")
+                text_parts.append("**5-Pillar Factor Breakdown:**")
+                for f in hs.get("factors", []):
+                    text_parts.append(f"• **{f['name']}** ({f['score']}/100): {f['detail']}")
+                if hs.get("suggestions"):
+                    text_parts.append("\n**Actionable Recommendations:**")
+                    for s in hs["suggestions"]:
+                        text_parts.append(f"💡 {s}")
+            else:
+                text_parts.append("Financial health scoring requires active account balance and transaction records.")
+
+        elif "unusual" in q or "anomaly" in q or "anomalies" in q or "flagged" in q or "spike" in q:
+            anoms = data_ctx.get("unusual_transactions", [])
+            if anoms:
+                text_parts.append(f"**Flagged Unusual & Anomalous Transactions:**\n")
+                for a in anoms:
+                    text_parts.append(f"• **{a['date']} | {a['merchant']}** — **{a['amount']}** ({a['category']})")
+                    text_parts.append(f"  *Severity: {str(a['severity']).upper()}* | Reason: {a['reason']}\n")
+                text_parts.append("You can approve verified transactions or confirm alerts directly on the **Transactions** ledger.")
+            else:
+                text_parts.append("No suspicious or anomalous transactions are currently flagged in your workspace.")
+
+        elif "what if" in q or "simulate" in q or "simulation" in q or "scenario" in q or "stress test" in q:
+            sim = data_ctx.get("simulation_preview", {})
+            if sim:
+                text_parts.append(f"**What-If Scenario Simulation Preview ({sim.get('horizon', '6-month')} horizon):**\n")
+                text_parts.append(f"• **Baseline Runway (Current Trend):** {sim.get('baseline_runway')} (Projected Cash: {sim.get('baseline_ending_cash')})")
+                text_parts.append(f"• **Expected Case (-15% Rev, +10% Exp):** {sim.get('expected_case_runway')} (Projected Cash: {sim.get('expected_ending_cash')})")
+                text_parts.append(f"• **Stress Test Worst-Case:** {sim.get('worst_case_runway')} (Projected Cash: {sim.get('worst_case_ending_cash')})")
+                text_parts.append("\nTo adjust sliders, test payment collection delays, and compare interactive trajectories, visit the **Simulator** page.")
+            else:
+                text_parts.append("Simulation engine requires account balance and historical revenue/expense data.")
+
+        elif "optimize" in q or "save" in q or "cut" in q or "trim" in q or "reduction" in q:
+            opts = data_ctx.get("expense_optimization", [])
+            comp = data_ctx.get("category_spend_comparison", [])
+            text_parts.append("**Data-Backed Expense Optimization Opportunities:**\n")
+            if opts:
+                text_parts.append("Based on historical transaction volume, your top expenditure areas are:")
+                for o in opts:
+                    text_parts.append(f"• **{o['category']}**: Total 60-day spend of {o['total_spent']}")
+            if comp:
+                text_parts.append("\n**Fastest Growing Expense Lines:**")
+                for c in comp[:2]:
+                    if c["raw_diff"] > 0:
+                        text_parts.append(f"• **{c['category']}**: Increased by {c['change']} month-over-month.")
+            text_parts.append("\n**Action Plan:**")
+            text_parts.append("1. Audit recurring software subscriptions and deprecate duplicate SaaS seats.")
+            text_parts.append("2. Negotiate annual upfront discounts for mission-critical cloud vendors.")
+            text_parts.append("3. Review contractor and advisory statements against planned milestone deliverables.")
 
         elif "forecast" in q or "cash position" in q or "runway" in q or "next month" in q:
             fc = data_ctx.get("cash_flow_forecast", {})

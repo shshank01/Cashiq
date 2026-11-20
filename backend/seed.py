@@ -17,6 +17,10 @@ from app.models.business_profile import BusinessProfile
 from app.ml.business_taxonomy import derive_initial_expense_profile
 from app.services.insight_service import InsightService
 from app.services.forecast_service import ForecastService
+from app.models.budget import Budget, CategoryBudget
+from app.models.simulation import SimulationScenario
+from app.models.reconciliation import ReconciliationSession, ReconciliationItem
+from app.services.health_score_service import HealthScoreService
 
 def get_hash(pwd: str) -> str:
     return bcrypt.hashpw(pwd.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -474,8 +478,142 @@ async def seed_database():
         ]
         session.add_all(receivables)
 
+        # 10. Budgets
+        current_month = now.strftime("%Y-%m")
+        budget = Budget(
+            workspace_id=workspace.id,
+            name=f"Operating Budget {now.strftime('%B %Y')}",
+            month=current_month,
+            total_limit_minor=2000000,  # $20,000.00
+            currency="USD",
+        )
+        session.add(budget)
+        await session.flush()
+
+        cat_budgets = [
+            CategoryBudget(
+                budget_id=budget.id,
+                category_name="Software & Cloud Services",
+                limit_minor=600000,  # $6,000.00
+                alert_threshold_pct=80.0,
+            ),
+            CategoryBudget(
+                budget_id=budget.id,
+                category_name="Marketing & Advertising",
+                limit_minor=300000,  # $3,000.00
+                alert_threshold_pct=80.0,
+            ),
+            CategoryBudget(
+                budget_id=budget.id,
+                category_name="Rent & Facilities",
+                limit_minor=300000,  # $3,000.00
+                alert_threshold_pct=80.0,
+            ),
+            CategoryBudget(
+                budget_id=budget.id,
+                category_name="Office Supplies & Equipment",
+                limit_minor=100000,  # $1,000.00
+                alert_threshold_pct=80.0,
+            ),
+            CategoryBudget(
+                budget_id=budget.id,
+                category_name="Meals & Entertainment",
+                limit_minor=50000,   # $500.00
+                alert_threshold_pct=80.0,
+            ),
+        ]
+        session.add_all(cat_budgets)
+
+        # 11. What-If Financial Simulator Scenario
+        sim_scenario = SimulationScenario(
+            workspace_id=workspace.id,
+            name="Q1 Conservative Growth Scenario",
+            description="5% revenue drop buffer, 10% expense reduction target, 15-day payment delay buffer.",
+            parameters={
+                "revenue_change_pct": -5.0,
+                "expense_change_pct": -10.0,
+                "delayed_receivables_days": 15,
+                "months": 6,
+            },
+            results={
+                "baseline": {"runway_months": 18.4, "runway_category": "healthy"},
+                "expected_case": {"runway_months": 22.1, "runway_category": "healthy"},
+                "best_case": {"runway_months": 28.5, "runway_category": "healthy"},
+                "worst_case": {"runway_months": 14.2, "runway_category": "healthy"},
+            }
+        )
+        session.add(sim_scenario)
+
+        # 12. Bank Statement Reconciliation Session
+        recon_session = ReconciliationSession(
+            workspace_id=workspace.id,
+            account_id=svb_acct.id,
+            filename="svb_statement_nov2026.csv",
+            total_statement_rows=4,
+            matched_count=3,
+            unmatched_bank_count=1,
+            unmatched_ledger_count=0,
+            status="completed",
+            summary={
+                "total_rows": 4,
+                "matched": 3,
+                "unmatched_bank": 1,
+                "unmatched_ledger": 0,
+                "match_rate": 75.0,
+            }
+        )
+        session.add(recon_session)
+        await session.flush()
+
+        # Seed reconciliation items
+        recon_items = [
+            ReconciliationItem(
+                session_id=recon_session.id,
+                statement_date=now - timedelta(days=2),
+                statement_description="AMZN MKTP US*CLOUD SVCS",
+                statement_amount_minor=-420000,  # -$4,200
+                statement_reference="TXN-SVB-88120",
+                match_type="exact",
+                status="approved",
+            ),
+            ReconciliationItem(
+                session_id=recon_session.id,
+                statement_date=now - timedelta(days=3),
+                statement_description="GOOGLE *WORKSPACE APPS",
+                statement_amount_minor=-36000,   # -$360
+                statement_reference="TXN-SVB-88121",
+                match_type="exact",
+                status="approved",
+            ),
+            ReconciliationItem(
+                session_id=recon_session.id,
+                statement_date=now - timedelta(days=5),
+                statement_description="STRIPE PAYOUT CLIENT REVENUE",
+                statement_amount_minor=1250000,  # +$12,500
+                statement_reference="TXN-SVB-88122",
+                match_type="probable",
+                status="pending",
+                discrepancy_details={"reason": "Amount match within 1% fee variance"}
+            ),
+            ReconciliationItem(
+                session_id=recon_session.id,
+                statement_date=now - timedelta(days=1),
+                statement_description="SVB WIRE FEE SERVICE CHG",
+                statement_amount_minor=-2500,    # -$25
+                statement_reference="TXN-SVB-88123",
+                match_type="unmatched_bank",
+                status="pending",
+                discrepancy_details={"reason": "Bank charge not yet recorded in internal ledger"}
+            )
+        ]
+        session.add_all(recon_items)
+
         await session.commit()
         print("Initial database models successfully committed.")
+
+        # 13. Financial Health Score
+        print("Calculating initial Financial Health Score...")
+        await HealthScoreService.calculate_health_score(session, workspace.id, persist=True)
 
         # 9. Generate Insights and Forecast
         print("Generating deterministic insights and cash flow forecast...")

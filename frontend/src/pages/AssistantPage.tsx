@@ -16,12 +16,14 @@ interface Message {
 }
 
 const PRESET_QUERIES = [
+  "Monthly Financial Summary",
+  "Explain Unusual Transactions",
+  "How is my Budget Doing?",
+  "Data-Backed Expense Optimization Tips",
+  "What if Revenue Drops 15%?",
+  "What is my Financial Health Score?",
   "Why did my expenses increase this month?",
-  "What was my biggest expense?",
-  "What is EBITDA and how does it relate to cash flow?",
   "What payments are due next month?",
-  "What is my expected cash runway and position?",
-  "Give me an executive dashboard summary"
 ];
 
 export function AssistantPage() {

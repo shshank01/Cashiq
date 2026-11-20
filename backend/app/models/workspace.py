@@ -32,6 +32,10 @@ class Workspace(Base):
     documents = relationship("Document", back_populates="workspace", cascade="all, delete-orphan")
     audits = relationship("Audit", back_populates="workspace", cascade="all, delete-orphan")
     business_profile = relationship("BusinessProfile", back_populates="workspace", uselist=False, cascade="all, delete-orphan")
+    budgets = relationship("Budget", back_populates="workspace", cascade="all, delete-orphan")
+    simulations = relationship("SimulationScenario", back_populates="workspace", cascade="all, delete-orphan")
+    reconciliations = relationship("ReconciliationSession", back_populates="workspace", cascade="all, delete-orphan")
+    health_scores = relationship("HealthScoreRecord", back_populates="workspace", cascade="all, delete-orphan")
 
 class WorkspaceMembership(Base):
     __tablename__ = "workspace_memberships"

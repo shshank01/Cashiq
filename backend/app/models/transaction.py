@@ -49,6 +49,8 @@ class Transaction(Base):
     anomaly_reason = Column(String(500), nullable=True)
     anomaly_explanation = Column(Text, nullable=True)  # JSON factor breakdown
     anomaly_feedback_status = Column(String(50), nullable=True)  # None, "legitimate", "suspicious"
+    anomaly_alert_type = Column(String(50), nullable=True)
+    anomaly_confidence = Column(Float, nullable=True)
 
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)

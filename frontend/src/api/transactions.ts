@@ -47,4 +47,11 @@ export const transactionsApi = {
     const res = await client.post(`/workspaces/${wid}/ml/scan-anomalies`);
     return res.data;
   },
+  listAnomalies: async (
+    wid: string,
+    params?: { severity?: string; feedback_status?: string; page?: number; per_page?: number }
+  ): Promise<{ items: Transaction[]; total: number; page: number; per_page: number; total_pages: number }> => {
+    const res = await client.get(`/workspaces/${wid}/anomalies`, { params });
+    return res.data;
+  },
 };

@@ -20,6 +20,8 @@ def safe_migrate_db(sync_conn):
         "transactions": [
             ("anomaly_explanation", "TEXT"),
             ("anomaly_feedback_status", "VARCHAR(50)"),
+            ("anomaly_alert_type", "VARCHAR(50)"),
+            ("anomaly_confidence", "FLOAT"),
         ],
         "business_profiles": [
             ("operating_model", "VARCHAR(100) DEFAULT 'B2B'"),

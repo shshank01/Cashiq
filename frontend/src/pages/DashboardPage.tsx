@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import { dashboardApi } from '../api/dashboard';
+import { healthScoreApi } from '../api/healthScore';
 import { formatMoney } from '../utils/format';
-import { DashboardData } from '../types';
+import { DashboardData, HealthScoreData } from '../types';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorState from '../components/ui/ErrorState';
 import EmptyState from '../components/ui/EmptyState';
@@ -24,12 +25,18 @@ import {
   RefreshCw,
   AlertTriangle,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  ShieldCheck,
+  Award,
+  Sliders,
+  ChevronRight
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const { currentWorkspace, currency: contextCurrency, formatConverted, fxRate, convertWithFx } = useWorkspace();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [healthScore, setHealthScore] = useState<HealthScoreData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,8 +48,20 @@ export const DashboardPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await dashboardApi.get(currentWorkspace.id);
-        if (isMounted) setData(response);
+        const [dashRes, healthRes] = await Promise.allSettled([
+          dashboardApi.get(currentWorkspace.id),
+          healthScoreApi.get(currentWorkspace.id)
+        ]);
+
+        if (dashRes.status === 'fulfilled' && isMounted) {
+          setData(dashRes.value);
+        } else if (dashRes.status === 'rejected') {
+          throw dashRes.reason;
+        }
+
+        if (healthRes.status === 'fulfilled' && isMounted) {
+          setHealthScore(healthRes.value);
+        }
       } catch (err: any) {
         if (isMounted) setError(err.message || 'Failed to load dashboard financial intelligence.');
       } finally {
@@ -246,6 +265,76 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Financial Health Score Banner */}
+      {healthScore && (
+        <Card className="p-6 bg-gradient-to-r from-stone-900 to-stone-850 text-white rounded-2xl shadow-md border-0">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
+            {/* Score & Grade */}
+            <div className="flex items-center gap-4 lg:border-r lg:border-stone-700/60 lg:pr-6">
+              <div className="w-20 h-20 rounded-2xl bg-teal-600/20 border border-teal-500/30 flex flex-col items-center justify-center shrink-0">
+                <span className="text-3xl font-serif font-black text-teal-300 leading-none">{healthScore.grade}</span>
+                <span className="text-[10px] font-mono text-stone-300 mt-0.5">{healthScore.overall_score}/100</span>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-400 uppercase tracking-wider">
+                  <Award className="w-3.5 h-3.5" />
+                  Financial Health Score
+                </div>
+                <h3 className="text-base font-semibold text-stone-100 truncate mt-0.5">
+                  {healthScore.status_description}
+                </h3>
+                <p className="text-xs text-stone-400 mt-0.5">
+                  Runway: <span className="font-mono text-teal-300 font-semibold">{healthScore.runway_months} months</span>
+                </p>
+              </div>
+            </div>
+
+            {/* 5 Factor Mini Bars */}
+            <div className="lg:col-span-2 space-y-2">
+              <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                Core Health Factor Breakdown
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {healthScore.factors.slice(0, 4).map((f) => (
+                  <div key={f.id} className="bg-stone-800/60 p-2 rounded-lg border border-stone-700/40">
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-stone-300 font-medium truncate">{f.name}</span>
+                      <span className="font-mono text-teal-300 font-semibold">{Math.round(f.score)}%</span>
+                    </div>
+                    <div className="w-full bg-stone-700/50 rounded-full h-1 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          f.score >= 75 ? 'bg-teal-400' : f.score >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                        }`}
+                        style={{ width: `${Math.min(100, f.score)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Callout */}
+            <div className="flex flex-col justify-center items-start lg:items-end gap-3 lg:border-l lg:border-stone-700/60 lg:pl-6">
+              <Link
+                to="/simulator"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-500 text-white shadow-sm transition-colors cursor-pointer"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                Run What-If Simulation
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                to="/budgets"
+                className="text-xs text-stone-300 hover:text-teal-300 transition-colors inline-flex items-center gap-1"
+              >
+                View Category Budgets →
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Visualizations Section: 4 Charts */}
       <div className="space-y-6">

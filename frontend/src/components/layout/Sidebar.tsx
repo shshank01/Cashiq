@@ -11,7 +11,10 @@ import {
   MessageSquare, 
   Settings, 
   LogOut,
-  Building2
+  Building2,
+  Sliders,
+  Wallet,
+  FileCheck2
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +23,9 @@ import { useWorkspace } from '../../contexts/WorkspaceContext';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: ArrowLeftRight, label: 'Transactions', path: '/transactions' },
+  { icon: Sliders, label: 'Simulator', path: '/simulator' },
+  { icon: Wallet, label: 'Budgets', path: '/budgets' },
+  { icon: FileCheck2, label: 'Reconciliation', path: '/reconciliation' },
   { icon: TrendingUp, label: 'Forecast', path: '/forecast' },
   { icon: Sparkles, label: 'Insights', path: '/insights' },
   { icon: ArrowDownLeft, label: 'Payables', path: '/payables' },

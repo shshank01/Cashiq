@@ -12,5 +12,23 @@ export const reportsApi = {
   getCashFlow: async (wid: string, params: any) => {
     const res = await client.get(`/workspaces/${wid}/reports/cash-flow`, { params });
     return res.data;
-  }
+  },
+  getSummary: async (wid: string, params: any) => {
+    const res = await client.get(`/workspaces/${wid}/reports/summary`, { params });
+    return res.data;
+  },
+  downloadExcel: async (wid: string, params: any): Promise<Blob> => {
+    const res = await client.get(`/workspaces/${wid}/reports/export/excel`, {
+      params,
+      responseType: 'blob',
+    });
+    return res.data;
+  },
+  downloadPdf: async (wid: string, params: any): Promise<Blob> => {
+    const res = await client.get(`/workspaces/${wid}/reports/export/pdf`, {
+      params,
+      responseType: 'blob',
+    });
+    return res.data;
+  },
 };

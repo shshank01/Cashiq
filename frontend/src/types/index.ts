@@ -298,3 +298,193 @@ export interface AssistantResponse {
   response: string;
   conversation_id: string;
 }
+
+// 1. What-If Financial Simulator types
+export interface SimulationScenarioItem {
+  month_index: number;
+  month_label: string;
+  projected_income_minor: number;
+  projected_expense_minor: number;
+  net_cash_flow_minor: number;
+  ending_cash_minor: number;
+}
+
+export interface SimulationScenarioDetail {
+  label: string;
+  revenue_change_pct: number;
+  expense_change_pct: number;
+  delayed_receivables_days: number;
+  ending_cash_minor: number;
+  lowest_cash_minor: number;
+  runway_months: number;
+  is_sustainable: boolean;
+  projections: SimulationScenarioItem[];
+}
+
+export interface SimulationResponse {
+  starting_cash_minor: number;
+  baseline_monthly_income_minor: number;
+  baseline_monthly_expense_minor: number;
+  horizon_months: number;
+  inputs: {
+    revenue_change_pct: number;
+    expense_change_pct: number;
+    delayed_receivables_days: number;
+    custom_events: any[];
+  };
+  scenarios: {
+    baseline: SimulationScenarioDetail;
+    expected_case: SimulationScenarioDetail;
+    best_case: SimulationScenarioDetail;
+    worst_case: SimulationScenarioDetail;
+  };
+  comparison_chart: Array<{
+    month_index: number;
+    month_label: string;
+    baseline_cash_minor: number;
+    expected_cash_minor: number;
+    best_cash_minor: number;
+    worst_cash_minor: number;
+    expected_net_flow_minor: number;
+    baseline_net_flow_minor: number;
+  }>;
+}
+
+export interface SavedScenario {
+  id: string;
+  name: string;
+  description: string | null;
+  parameters: any;
+  results: any;
+  created_at: string;
+}
+
+// 2. Budget Management types
+export interface CategoryBudgetPerformance {
+  category: string;
+  limit_minor: number;
+  spent_minor: number;
+  remaining_minor: number;
+  spent_pct: number;
+  status: 'safe' | 'warning' | 'over_budget' | 'unbudgeted';
+  has_budget: boolean;
+}
+
+export interface BudgetAlert {
+  category: string;
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  spent_minor: number;
+  limit_minor: number;
+}
+
+export interface BudgetPerformanceResponse {
+  budget_id: string | null;
+  workspace_id: string;
+  month: string;
+  name: string;
+  total_budget_limit_minor: number;
+  total_spent_minor: number;
+  remaining_minor: number;
+  spent_pct: number;
+  status: 'safe' | 'warning' | 'over_budget';
+  overbudget_categories_count: number;
+  category_performances: CategoryBudgetPerformance[];
+  alerts: BudgetAlert[];
+  comparison_chart: Array<{
+    category: string;
+    budget_minor: number;
+    actual_minor: number;
+    variance_minor: number;
+    spent_pct: number;
+    status: string;
+  }>;
+}
+
+export interface BudgetSummary {
+  id: string;
+  month: string;
+  name: string;
+  total_limit_minor: number;
+  total_spent_minor: number;
+  spent_pct: number;
+  status: string;
+  overbudget_categories_count: number;
+  created_at: string;
+}
+
+// 3. Bank Statement Reconciliation types
+export interface ReconciliationItemData {
+  id: string;
+  date: string;
+  description: string;
+  amount_minor: number;
+  reference?: string | null;
+  transaction_id?: string | null;
+  match_type: 'exact' | 'probable' | 'difference' | 'duplicate' | 'unmatched_bank' | 'unmatched_ledger';
+  status: 'pending' | 'approved' | 'rejected';
+  discrepancy_details?: {
+    date_diff_days?: number;
+    amount_diff_minor?: number;
+    reason?: string;
+  } | null;
+}
+
+export interface ReconciliationSessionData {
+  id: string;
+  workspace_id: string;
+  filename: string;
+  total_statement_rows: number;
+  matched_count: number;
+  unmatched_bank_count: number;
+  unmatched_ledger_count: number;
+  status: 'completed' | 'in_review' | 'reconciled';
+  summary: {
+    exact_matches: number;
+    probable_matches: number;
+    difference_matches: number;
+    duplicate_matches: number;
+    match_rate_pct: number;
+  };
+  created_at: string;
+  items: ReconciliationItemData[];
+}
+
+// 4. Financial Health Score types
+export interface HealthScoreFactor {
+  id: string;
+  name: string;
+  score: number;
+  weight: number;
+  status: 'strong' | 'fair' | 'weak';
+  metric_label: string;
+  detail: string;
+}
+
+export interface HealthScoreData {
+  overall_score: number;
+  grade: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F' | string;
+  status_description: string;
+  current_cash_minor: number;
+  runway_months: number;
+  factors: HealthScoreFactor[];
+  positive_drivers: string[];
+  negative_drivers: string[];
+  suggestions: string[];
+  historical_trend: Array<{
+    month: string;
+    score: number;
+    net_flow_minor: number;
+  }>;
+}
+
+// 5. Audit Log type
+export interface AuditLogItem {
+  id: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string | null;
+  details?: any;
+  created_at: string;
+  user_id?: string | null;
+}

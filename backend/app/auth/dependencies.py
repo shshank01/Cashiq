@@ -57,4 +57,18 @@ async def get_current_workspace_user(
     return {"user": current_user, "workspace_id": wid, "role": membership.role}
 
 
+def require_workspace_role(allowed_roles: list[str]):
+    """Enforces role-based access control within workspace context."""
+    async def role_checker(ctx: dict = Depends(get_current_workspace_user)) -> dict:
+        user_role = (ctx.get("role") or "viewer").lower()
+        allowed = [r.lower() for r in allowed_roles]
+        if user_role not in allowed and "owner" not in allowed and user_role != "owner":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Action requires one of the following roles: {', '.join(allowed_roles)}. Current role: '{user_role}'"
+            )
+        return ctx
+    return role_checker
+
+
 verify_workspace_access = get_current_workspace_user
