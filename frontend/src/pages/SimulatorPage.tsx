@@ -20,7 +20,8 @@ import {
   Trash2, 
   RotateCcw,
   Clock,
-  Sparkles
+  Sparkles,
+  Pencil
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -34,6 +35,154 @@ import {
   BarChart,
   Bar
 } from 'recharts';
+
+interface EditableValueBadgeProps {
+  value: number;
+  min: number;
+  max: number;
+  unit: '%' | 'days';
+  colorClass?: string;
+  onChange: (val: number) => void;
+  ariaLabel?: string;
+}
+
+const parseNumericValue = (
+  raw: string,
+  fallback: number,
+  min: number,
+  max: number,
+  unit: '%' | 'days'
+): number => {
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+
+  if (trimmed.toLowerCase() === 'on time' || trimmed.toLowerCase() === 'ontime') {
+    return 0;
+  }
+
+  const cleaned = trimmed.replace(/\s+/g, '');
+  const match = cleaned.match(/^([+-]?\d+(?:\.\d+)?)/);
+  if (!match) {
+    const fallbackMatch = cleaned.match(/([+-]?\d+(?:\.\d+)?)/);
+    if (!fallbackMatch) return fallback;
+    const num = parseFloat(fallbackMatch[1]);
+    if (isNaN(num)) return fallback;
+    const finalVal = unit === 'days' ? Math.round(num) : Math.round(num * 10) / 10;
+    return Math.min(max, Math.max(min, finalVal));
+  }
+
+  const num = parseFloat(match[1]);
+  if (isNaN(num)) return fallback;
+
+  const finalVal = unit === 'days' ? Math.round(num) : Math.round(num * 10) / 10;
+  return Math.min(max, Math.max(min, finalVal));
+};
+
+const formatDisplay = (val: number, unit: '%' | 'days'): string => {
+  if (unit === '%') {
+    return val > 0 ? `+${val}%` : `${val}%`;
+  }
+  return val === 0 ? 'On Time' : `+${val} days`;
+};
+
+const formatEditInit = (val: number, unit: '%' | 'days'): string => {
+  if (unit === '%') {
+    return val > 0 ? `+${val}%` : `${val}%`;
+  }
+  return val === 0 ? '0' : `+${val} days`;
+};
+
+const EditableValueBadge: React.FC<EditableValueBadgeProps> = ({
+  value,
+  min,
+  max,
+  unit,
+  colorClass,
+  onChange,
+  ariaLabel
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleStartEdit = () => {
+    setInputText(formatEditInit(value, unit));
+    setIsEditing(true);
+  };
+
+  const handleCommit = () => {
+    const parsed = parseNumericValue(inputText, value, min, max, unit);
+    onChange(parsed);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCommit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsEditing(false);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const current = parseNumericValue(inputText, value, min, max, unit);
+      const next = Math.min(max, current + 1);
+      setInputText(formatEditInit(next, unit));
+      onChange(next);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const current = parseNumericValue(inputText, value, min, max, unit);
+      const next = Math.max(min, current - 1);
+      setInputText(formatEditInit(next, unit));
+      onChange(next);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onBlur={handleCommit}
+          onKeyDown={handleKeyDown}
+          aria-label={ariaLabel || 'Exact parameter value'}
+          className="w-20 px-1.5 py-0.5 text-xs font-mono font-semibold text-right border border-teal-600 rounded bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-teal-600 text-stone-900"
+          placeholder={unit === '%' ? '+0%' : '0 days'}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleStartEdit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleStartEdit();
+        }
+      }}
+      title="Click to type an exact number (e.g. +7%, +13%, +22 days)"
+      aria-label={ariaLabel || 'Click to type an exact number'}
+      className={`group font-mono font-semibold cursor-pointer px-1.5 py-0.5 rounded border border-dashed border-transparent hover:border-stone-300 hover:bg-stone-50 transition-all flex items-center gap-1 select-none ${colorClass || 'text-stone-800'}`}
+    >
+      <span>{formatDisplay(value, unit)}</span>
+      <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 text-stone-400 transition-opacity" />
+    </div>
+  );
+};
 
 export const SimulatorPage: React.FC = () => {
   const { currentWorkspace, currency: contextCurrency } = useWorkspace();
@@ -190,61 +339,94 @@ export const SimulatorPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Revenue Change Slider */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between items-center text-xs">
               <span className="font-medium text-stone-700">Revenue Adjustment</span>
-              <span className={`font-mono font-semibold ${revenueChangePct >= 0 ? 'text-teal-700' : 'text-rose-600'}`}>
-                {revenueChangePct > 0 ? `+${revenueChangePct}%` : `${revenueChangePct}%`}
-              </span>
+              <EditableValueBadge
+                value={revenueChangePct}
+                min={-50}
+                max={50}
+                unit="%"
+                colorClass={revenueChangePct >= 0 ? 'text-teal-700' : 'text-rose-600'}
+                onChange={setRevenueChangePct}
+                ariaLabel="Revenue Adjustment Percentage"
+              />
             </div>
             <input
               type="range"
               min="-50"
               max="50"
-              step="5"
+              step="1"
               value={revenueChangePct}
               onChange={(e) => setRevenueChangePct(Number(e.target.value))}
               className="w-full accent-teal-600 cursor-pointer"
             />
+            <div className="flex justify-between text-[10px] text-stone-400 font-mono">
+              <span>-50%</span>
+              <span>0%</span>
+              <span>+50%</span>
+            </div>
             <p className="text-[11px] text-stone-400">Simulate market contractions or pipeline growth</p>
           </div>
 
           {/* Expense Change Slider */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between items-center text-xs">
               <span className="font-medium text-stone-700">Expense Adjustment</span>
-              <span className={`font-mono font-semibold ${expenseChangePct <= 0 ? 'text-teal-700' : 'text-rose-600'}`}>
-                {expenseChangePct > 0 ? `+${expenseChangePct}%` : `${expenseChangePct}%`}
-              </span>
+              <EditableValueBadge
+                value={expenseChangePct}
+                min={-50}
+                max={50}
+                unit="%"
+                colorClass={expenseChangePct <= 0 ? 'text-teal-700' : 'text-rose-600'}
+                onChange={setExpenseChangePct}
+                ariaLabel="Expense Adjustment Percentage"
+              />
             </div>
             <input
               type="range"
               min="-50"
               max="50"
-              step="5"
+              step="1"
               value={expenseChangePct}
               onChange={(e) => setExpenseChangePct(Number(e.target.value))}
               className="w-full accent-teal-600 cursor-pointer"
             />
+            <div className="flex justify-between text-[10px] text-stone-400 font-mono">
+              <span>-50%</span>
+              <span>0%</span>
+              <span>+50%</span>
+            </div>
             <p className="text-[11px] text-stone-400">Simulate hiring, cloud spikes, or budget cuts</p>
           </div>
 
           {/* Delayed Payments Slider */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between items-center text-xs">
               <span className="font-medium text-stone-700">Receivables Delay</span>
-              <span className="font-mono font-semibold text-stone-800">
-                {delayedDays === 0 ? 'On Time' : `+${delayedDays} days`}
-              </span>
+              <EditableValueBadge
+                value={delayedDays}
+                min={0}
+                max={60}
+                unit="days"
+                colorClass="text-stone-800"
+                onChange={setDelayedDays}
+                ariaLabel="Receivables Delay in Days"
+              />
             </div>
             <input
               type="range"
               min="0"
               max="60"
-              step="15"
+              step="1"
               value={delayedDays}
               onChange={(e) => setDelayedDays(Number(e.target.value))}
               className="w-full accent-teal-600 cursor-pointer"
             />
+            <div className="flex justify-between text-[10px] text-stone-400 font-mono">
+              <span>On Time</span>
+              <span>+30d</span>
+              <span>+60d</span>
+            </div>
             <p className="text-[11px] text-stone-400">Simulate client invoice collection delays</p>
           </div>
 
